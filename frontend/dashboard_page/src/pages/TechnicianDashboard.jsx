@@ -1,11 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
-const TechnicianDashboard = () => {
+const TechnicianDashboard = ({ criticalAlert }) => {
   const blocks = [
     { name: 'Alerts', path: '/alerts' },
     { name: 'Fault Logs', path: '/fault-logs' },
-    { name: 'Users', path: '/users' },
     { name: 'Sensor Data', path: '/sensor-data' },
     { name: 'Devices', path: '/devices' },
     { name: 'Maintenance', path: '/maintenance' },
@@ -32,6 +31,11 @@ const TechnicianDashboard = () => {
     transition: 'transform 0.2s ease, background-color 0.2s ease',
   };
 
+  const criticalBlockStyle = {
+    ...blockStyle,
+    backgroundColor: '#ff4d4d', // Red background if critical
+  };
+
   const handleMouseOver = (e) => {
     e.currentTarget.style.transform = 'scale(1.05)';
     e.currentTarget.style.backgroundColor = '#e6f0ff';
@@ -50,7 +54,7 @@ const TechnicianDashboard = () => {
           <Link
             to={block.path}
             key={index}
-            style={blockStyle}
+            style={block.name === 'Alerts' && criticalAlert ? criticalBlockStyle : blockStyle}
             onMouseOver={handleMouseOver}
             onMouseOut={handleMouseOut}
           >
@@ -63,3 +67,4 @@ const TechnicianDashboard = () => {
 };
 
 export default TechnicianDashboard;
+
