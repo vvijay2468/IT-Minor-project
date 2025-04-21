@@ -1,22 +1,132 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { collection, getDocs, addDoc } from 'firebase/firestore';
+import { db } from '../firebase/config';
 
 const MaintenancePage = () => {
-  const maintenance = [
-    {
-      schedule_id: 1, device_id: 1, last_maintenance: '2025-03-01',
-      next_maintenance: '2025-06-01', technician_id: 3, maintenance_type: 'Routine',
-      maintenance_status: 'Scheduled', maintenance_notes: 'Quarterly inspection'
-    },
-    {
-      schedule_id: 2, device_id: 2, last_maintenance: '2025-02-15',
-      next_maintenance: '2025-05-15', technician_id: 4, maintenance_type: 'Repair',
-      maintenance_status: 'Completed', maintenance_notes: 'Replaced faulty sensor'
-    },
-  ];
+  const [maintenance, setMaintenance] = useState([]);
+  const [devices, setDevices] = useState([]);
+  const [error, setError] = useState('');
+  const [newMaintenance, setNewMaintenance] = useState({
+    device_id: '',
+    next_maintenance: '',
+    technician_id: '',
+    maintenance_type: '',
+    maintenance_status: 'Scheduled',
+    maintenance_notes: ''
+  });
+
+  const fetchMaintenance = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, 'maintenance'));
+      const maintenanceList = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setMaintenance(maintenanceList);
+    } catch (error) {
+      console.error("Error fetching maintenance:", error);
+    }
+  };
+
+  const fetchDevices = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, 'devices'));
+      const devicesList = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setDevices(devicesList);
+    } catch (error) {
+      console.error("Error fetching devices:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchMaintenance();
+    fetchDevices();
+  }, []);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    // Check if device exists
+    const deviceExists = devices.some(device => device.id === newMaintenance.device_id);
+    if (!deviceExists) {
+      setError('Invalid Device ID. Please enter an existing device ID.');
+      return;
+    }
+
+    try {
+      await addDoc(collection(db, 'maintenance'), {
+        ...newMaintenance,
+        last_maintenance: new Date().toISOString().split('T')[0],
+        created_at: new Date().toISOString()
+      });
+      setNewMaintenance({
+        device_id: '',
+        next_maintenance: '',
+        technician_id: '',
+        maintenance_type: '',
+        maintenance_status: 'Scheduled',
+        maintenance_notes: ''
+      });
+      fetchMaintenance();
+    } catch (error) {
+      setError('Error adding maintenance: ' + error.message);
+    }
+  };
 
   return (
     <div style={{ padding: '1rem' }}>
       <h2>Maintenance Schedule</h2>
+      
+      <form onSubmit={handleSubmit} style={{ marginBottom: '2rem' }}>
+        <h3>Add New Maintenance</h3>
+        {error && <div style={{ color: 'red', marginBottom: '1rem' }}>{error}</div>}
+        <div style={{ display: 'grid', gap: '1rem', maxWidth: '500px' }}>
+          <select
+            value={newMaintenance.device_id}
+            onChange={(e) => setNewMaintenance({...newMaintenance, device_id: e.target.value})}
+            required
+          >
+            <option value="">Select Device</option>
+            {devices.map(device => (
+              <option key={device.id} value={device.id}>
+                {device.device_name} (ID: {device.id})
+              </option>
+            ))}
+          </select>
+          <input
+            type="date"
+            placeholder="Next Maintenance Date"
+            value={newMaintenance.next_maintenance}
+            onChange={(e) => setNewMaintenance({...newMaintenance, next_maintenance: e.target.value})}
+            required
+          />
+          <input
+            type="number"
+            placeholder="Technician ID"
+            value={newMaintenance.technician_id}
+            onChange={(e) => setNewMaintenance({...newMaintenance, technician_id: e.target.value})}
+            required
+          />
+          <input
+            type="text"
+            placeholder="Maintenance Type"
+            value={newMaintenance.maintenance_type}
+            onChange={(e) => setNewMaintenance({...newMaintenance, maintenance_type: e.target.value})}
+            required
+          />
+          <textarea
+            placeholder="Maintenance Notes"
+            value={newMaintenance.maintenance_notes}
+            onChange={(e) => setNewMaintenance({...newMaintenance, maintenance_notes: e.target.value})}
+          />
+          <button type="submit">Add Maintenance</button>
+        </div>
+      </form>
+
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ backgroundColor: '#f2f2f2' }}>
@@ -25,8 +135,8 @@ const MaintenancePage = () => {
         </thead>
         <tbody>
           {maintenance.map(item => (
-            <tr key={item.schedule_id}>
-              <td>{item.schedule_id}</td>
+            <tr key={item.id}>
+              <td>{item.id}</td>
               <td>{item.device_id}</td>
               <td>{item.last_maintenance}</td>
               <td>{item.next_maintenance}</td>

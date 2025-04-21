@@ -1,0 +1,11 @@
+{
+  "name": "it-minor-project",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "cd frontend/dashboard_page && npm start",
+    "install-deps": "cd frontend/dashboard_page && npm install"
+  },
+  "dependencies": {
+    "firebase": "^11.6.0"
+  }
+}

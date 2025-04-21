@@ -1,75 +1,65 @@
 import React, { useState, useEffect } from 'react';
+import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { db } from '../firebase/config';
 
 const AlertsPage = ({ setCriticalAlert }) => {
   const [alerts, setAlerts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchAlerts = async () => {
+    try {
+      const alertsQuery = query(collection(db, 'alerts'), orderBy('timestamp', 'desc'));
+      const querySnapshot = await getDocs(alertsQuery);
+      const alertsList = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      setAlerts(alertsList);
+      // Check for critical alerts
+      const hasCriticalAlert = alertsList.some(alert => alert.alert_type === 'Critical');
+      setCriticalAlert(hasCriticalAlert);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching alerts:', err);
+      setError('Failed to load alerts');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const alertsData = [
-      {
-        alert_id: 1,
-        fault_id: 101,
-        timestamp: '2025-04-20 14:30:00',
-        alert_message: 'Overcurrent detected in Device A',
-        alert_type: 'Warning',
-      },
-      {
-        alert_id: 2,
-        fault_id: 102,
-        timestamp: '2025-04-20 15:10:00',
-        alert_message: 'Power factor below threshold in Device B',
-        alert_type: 'Critical',
-      },
-      {
-        alert_id: 3,
-        fault_id: 103,
-        timestamp: '2025-04-20 16:05:00',
-        alert_message: 'Voltage spike detected in Device C',
-        alert_type: 'Info',
-      },
-      {
-        alert_id: 4,
-        fault_id: 104,
-        timestamp: '2025-04-20 17:45:00',
-        alert_message: 'Device D resumed normal operation',
-        alert_type: 'Resolved',
-      },
-    ];
+    fetchAlerts();
+  }, [setCriticalAlert]);
 
-    // Set the alerts after fetching (or using hardcoded data)
-    setAlerts(alertsData);
-    
-  }, []);  // Empty dependency array to run only once
-
-  // Check for critical alerts after the alerts are set
-  useEffect(() => {
-    const hasCriticalAlert = alerts.some(alert => alert.alert_type === 'Critical');
-    setCriticalAlert(hasCriticalAlert);
-  }, [alerts, setCriticalAlert]);  // Re-run when 'alerts' changes
+  if (loading) return <div style={{ padding: '20px', textAlign: 'center' }}>Loading alerts...</div>;
+  if (error) return <div style={{ padding: '20px', color: 'red', textAlign: 'center' }}>{error}</div>;
 
   return (
-    <div className="alerts-page" style={{ padding: '1rem' }}>
+    <div style={{ padding: '1rem' }}>
       <h2>Alerts</h2>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ backgroundColor: '#f2f2f2' }}>
-            <th style={{ border: '1px solid #ddd', padding: '8px' }}>Alert ID</th>
-            <th style={{ border: '1px solid #ddd', padding: '8px' }}>Fault ID</th>
-            <th style={{ border: '1px solid #ddd', padding: '8px' }}>Timestamp</th>
-            <th style={{ border: '1px solid #ddd', padding: '8px' }}>Message</th>
-            <th style={{ border: '1px solid #ddd', padding: '8px' }}>Type</th>
+            <th>Alert ID</th>
+            <th>Fault ID</th>
+            <th>Timestamp</th>
+            <th>Message</th>
+            <th>Type</th>
           </tr>
         </thead>
         <tbody>
           {alerts.map((alert) => (
             <tr
-              key={alert.alert_id}
+              key={alert.id}
               style={{ backgroundColor: getRowColor(alert.alert_type) }}
             >
-              <td style={{ border: '1px solid #ddd', padding: '8px' }}>{alert.alert_id}</td>
-              <td style={{ border: '1px solid #ddd', padding: '8px' }}>{alert.fault_id}</td>
-              <td style={{ border: '1px solid #ddd', padding: '8px' }}>{alert.timestamp}</td>
-              <td style={{ border: '1px solid #ddd', padding: '8px' }}>{alert.alert_message}</td>
-              <td style={{ border: '1px solid #ddd', padding: '8px' }}>{alert.alert_type}</td>
+              <td>{alert.id}</td>
+              <td>{alert.fault_id}</td>
+              <td>{new Date(alert.timestamp).toLocaleString()}</td>
+              <td>{alert.alert_message}</td>
+              <td>{alert.alert_type}</td>
             </tr>
           ))}
         </tbody>
@@ -78,17 +68,16 @@ const AlertsPage = ({ setCriticalAlert }) => {
   );
 };
 
-// Function to decide the color of the row based on alert type
 const getRowColor = (alertType) => {
   switch (alertType) {
     case 'Critical':
-      return '#ff4d4d'; // Red for critical
-    case 'Resolved':
-      return '#4CAF50'; // Green for resolved
+      return '#ff4d4d';
     case 'Warning':
-      return '#ffcc00'; // Yellow for warning
+      return '#ffcc00';
+    case 'Resolved':
+      return '#4CAF50';
     default:
-      return 'white'; // Default color
+      return 'white';
   }
 };
 

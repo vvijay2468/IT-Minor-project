@@ -1,25 +1,48 @@
-import React from 'react';
+import React, { useState, useEffect } from "react";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../firebase/config";
+import AddDeviceForm from "../components/AddDeviceForm";
 
 const DevicesPage = () => {
-  const devices = [
-    { device_id: 1, device_name: 'Smart Meter A', device_type: 'Energy Meter', power_rating: 5.5, location: 'Building 1' },
-    { device_id: 2, device_name: 'Sensor B', device_type: 'Current Sensor', power_rating: 2.2, location: 'Building 2' },
-    { device_id: 3, device_name: 'Sensor C', device_type: 'Voltage Sensor', power_rating: 3.0, location: 'Main Control Room' },
-  ];
+  const [devices, setDevices] = useState([]);
+
+  const fetchDevices = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, "devices"));
+      const devicesList = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setDevices(devicesList);
+    } catch (error) {
+      console.error("Error fetching devices: ", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchDevices();
+  }, []);
 
   return (
-    <div style={{ padding: '1rem' }}>
+    <div style={{ padding: "1rem" }}>
       <h2>Devices</h2>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <AddDeviceForm onDeviceAdded={fetchDevices} />
+      <table
+        style={{ width: "100%", borderCollapse: "collapse", marginTop: "20px" }}
+      >
         <thead>
-          <tr style={{ backgroundColor: '#f2f2f2' }}>
-            <th>ID</th><th>Name</th><th>Type</th><th>Power Rating (kW)</th><th>Location</th>
+          <tr style={{ backgroundColor: "#f2f2f2" }}>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Power Rating (kW)</th>
+            <th>Location</th>
           </tr>
         </thead>
         <tbody>
-          {devices.map(device => (
-            <tr key={device.device_id}>
-              <td>{device.device_id}</td>
+          {devices.map((device) => (
+            <tr key={device.id}>
+              <td>{device.id}</td>
               <td>{device.device_name}</td>
               <td>{device.device_type}</td>
               <td>{device.power_rating}</td>

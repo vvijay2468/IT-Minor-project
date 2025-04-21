@@ -1,11 +1,39 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { collection, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { db } from '../firebase/config';
 
 const FaultLogsPage = () => {
-  const faults = [
-    { fault_id: 101, data_id: 201, fault_type: 'Overcurrent', severity: 'High', fault_description: 'Current exceeded threshold', resolved: false, resolution_timestamp: null },
-    { fault_id: 102, data_id: 202, fault_type: 'Low PF', severity: 'Medium', fault_description: 'Power factor below 0.85', resolved: true, resolution_timestamp: '2025-04-20 18:00:00' },
-    { fault_id: 103, data_id: 203, fault_type: 'Voltage Spike', severity: 'Critical', fault_description: 'Sudden voltage rise detected', resolved: true, resolution_timestamp: '2025-04-19 13:15:00' },
-  ];
+  const [faults, setFaults] = useState([]);
+
+  const fetchFaults = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, 'faults'));
+      const faultsList = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setFaults(faultsList);
+    } catch (error) {
+      console.error("Error fetching faults:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchFaults();
+  }, []);
+
+  const handleResolvedChange = async (faultId, isResolved) => {
+    try {
+      const faultRef = doc(db, 'faults', faultId);
+      await updateDoc(faultRef, {
+        resolved: isResolved,
+        resolution_timestamp: isResolved ? new Date().toISOString() : null
+      });
+      fetchFaults(); // Refresh the list
+    } catch (error) {
+      console.error("Error updating fault:", error);
+    }
+  };
 
   return (
     <div style={{ padding: '1rem' }}>
@@ -13,18 +41,30 @@ const FaultLogsPage = () => {
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ backgroundColor: '#f2f2f2' }}>
-            <th>ID</th><th>Data ID</th><th>Type</th><th>Severity</th><th>Description</th><th>Resolved</th><th>Resolved At</th>
+            <th>ID</th>
+            <th>Data ID</th>
+            <th>Type</th>
+            <th>Severity</th>
+            <th>Description</th>
+            <th>Resolved</th>
+            <th>Resolved At</th>
           </tr>
         </thead>
         <tbody>
           {faults.map(fault => (
-            <tr key={fault.fault_id}>
-              <td>{fault.fault_id}</td>
+            <tr key={fault.id}>
+              <td>{fault.id}</td>
               <td>{fault.data_id}</td>
               <td>{fault.fault_type}</td>
               <td>{fault.severity}</td>
               <td>{fault.fault_description}</td>
-              <td>{fault.resolved ? 'Yes' : 'No'}</td>
+              <td>
+                <input
+                  type="checkbox"
+                  checked={fault.resolved}
+                  onChange={(e) => handleResolvedChange(fault.id, e.target.checked)}
+                />
+              </td>
               <td>{fault.resolution_timestamp || 'N/A'}</td>
             </tr>
           ))}
